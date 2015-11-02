@@ -12,48 +12,58 @@ dayOneBasicString = """
 <plist version="1.0">
 <dict>
 	<key>Creation Date</key>
-	<date>2015-11-02T20:10:46Z</date>
+	<date>{date}</date>
 	<key>Creator</key>
 	<dict>
-		<key>Device Agent</key>
-		<string>Macintosh/MacBookAir6,2</string>
 		<key>Generation Date</key>
-		<date>2015-11-02T20:10:46Z</date>
-		<key>Host Name</key>
-		<string>armor.lanl.gov</string>
-		<key>OS Agent</key>
-		<string>MacOS/10.10.5</string>
+		<date>{date}</date>
 		<key>Software Agent</key>
-		<string>Day One Mac/1.10.1</string>
+		<string>MacJournal/{agentVersion}</string>
 	</dict>
 	<key>Entry Text</key>
 	<string>This is a test. I want to know what happens if I do this here.</string>
 	<key>Location</key>
 	<dict>
-		<key>Administrative Area</key>
-		<string>NY</string>
-		<key>Country</key>
-		<string>United States</string>
 		<key>Latitude</key>
-		<real>40.870095114862877</real>
-		<key>Locality</key>
-		<string>Brookhaven</string>
+		<real>{latitude}</real>
 		<key>Longitude</key>
-		<real>-72.884910881110642</real>
-		<key>Place Name</key>
-		<string>Brookhaven National Laboratory</string>
+		<real>{longitude}</real>
 	</dict>
 	<key>Starred</key>
 	<false/>
 	<key>Tags</key>
-	<array/>
+	<array>{tags}</array>
 	<key>Time Zone</key>
-	<string>America/New_York</string>
+	<string>{timezone}</string>
 	<key>UUID</key>
 	<string>A7BADD177A0544369B8FF0C8C216C8CA</string>
 </dict>
 </plist>
 """
+
+def entryData(Entry):
+    """
+    entryData will return a dictionary that contains the meta data used to
+    create a Day One entry. The meta data comes from the MacJournal entry: Entry.
+    """
+    metaData = {}
+
+    # Date
+    fmt = "%Y-%m-%dT%H:%M:%S.%f"
+    metaData['date'] = "{}Z".format( Entry.date.strftime(fmt) )
+
+    # Location data
+    metaData['timezone'] = Entry.timezone()
+    metaData['latitude'] = Entry.latitude()
+    metaData['longitude'] = Entry.latitude()
+
+    # Tags
+    keywords = Entry.keywords()
+    tags = [" "*8 + "<string>{}</string>\n".format(word) for word in keywords]
+    metaData['tags'] = tags
+
+    return metaData
+
 if __name__ == "__main__":
     print("\nI'm converting from MacJournal to DayOne.\n")
 
@@ -67,7 +77,13 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-#   mjDoc = MJParser.mjdoc(args.mjdoc[0], verbose=True)
+    mjDoc = MJParser.mjdoc(args.mjdoc[0], verbose=True)
 
-#   if args.xml:
-#       mjDoc.MakeXMLFile(args.xml)
+    if args.xml:
+        mjDoc.MakeXMLFile(args.xml)
+
+    # Find some global data for string formatting
+    mjArgs = {}
+    generator =  mjDoc.macjournalml.getElementsByTagName('generator')[0]
+    mjArgs['agentVersion'] = generator.getAttribute('version')
+
