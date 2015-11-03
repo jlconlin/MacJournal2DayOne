@@ -36,7 +36,8 @@ dayOneBasicString = """
 	<key>Starred</key>
 	<false/>
 	<key>Tags</key>
-	<array>{tags}</array>
+	<array>{tags}
+    </array>
 	<key>Time Zone</key>
 	<string>{timezone}</string>
 	<key>UUID</key>
@@ -66,8 +67,8 @@ def entryData(Entry, mjDoc):
 
     # Tags
     keywords = Entry.keywords()
-    tags = [" "*8 + "<string>{}</string>\n".format(word) for word in keywords]
-    metaData['tags'] = tags
+    tags = [" "*16 + "<string>{}</string>".format(word) for word in keywords]
+    metaData['tags'] = "\n" + "\n".join(tags)
 
     # ID---remove '-' from MacJournal ID
     metaData['id'] = Entry.content['id'].replace('-','')
@@ -104,10 +105,23 @@ def makeJournal(path):
         os.makedirs( os.path.join(journalPath, "entries") )
         os.makedirs( os.path.join(journalPath, "photos") )
 
-def makeEntries(journalPath, Entries):
+def makeEntries(journalPath, mjDoc, Entries, format):
     """
+    makeEntries will create a journal entry for each entry in Entries.
+    Entries.
     """
-    pass
+    for entry in Entries:
+        metaData = entryData(entry, mjDoc)
+        eText = entryText(entry, mjDoc, format=args.format)
+        metaData['entryText'] = eText
+
+        filename = os.path.join( journalPath, "entries",
+            '{}.doentry'.format(metaData['id']) )
+
+        text = dayOneBasicString.format(**metaData)
+
+        with open(filename, 'w') as entryFile:
+            entryFile.write(text)
 
 if __name__ == "__main__":
     print("\nI'm converting from MacJournal to DayOne.\n")
@@ -138,6 +152,8 @@ if __name__ == "__main__":
 
     journalPath = "{}.dayone".format(args.journal_name)
     makeJournal(journalPath)
+
+    makeEntries(journalPath, mjDoc, [mjEntry], args.format)
 
 
 
