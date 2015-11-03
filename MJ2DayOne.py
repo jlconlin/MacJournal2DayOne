@@ -40,7 +40,7 @@ dayOneBasicString = """
 	<key>Time Zone</key>
 	<string>{timezone}</string>
 	<key>UUID</key>
-	<string>A7BADD177A0544369B8FF0C8C216C8CA</string>
+	<string>{id}</string>
 </dict>
 </plist>
 """
@@ -69,11 +69,8 @@ def entryData(Entry, mjDoc):
     tags = [" "*8 + "<string>{}</string>\n".format(word) for word in keywords]
     metaData['tags'] = tags
 
-    # Entry text
-    filename = os.path.join(mjDoc.Content, Entry.filename)
-    filetext = subprocess.check_output(
-        'ruby rtf2markdown.rb "{}"'.format(filename), shell=True)
-    metaData['text'] = filetext
+    # ID---remove '-' from MacJournal ID
+    metaData['id'] = Entry.content['id'].replace('-','')
 
     return metaData
 
@@ -97,6 +94,20 @@ def entryText(Entry, mjDoc, format="txt"):
     os.system( 'rm "{}"'.format(Entry.filename) )
 
     return content
+
+def makeJournal(path):
+    """
+    makeJournal will create the directories needed in which the entries will be
+    stored.
+    """
+    if not os.path.exists(journalPath):
+        os.makedirs( os.path.join(journalPath, "entries") )
+        os.makedirs( os.path.join(journalPath, "photos") )
+
+def makeEntries(journalPath, Entries):
+    """
+    """
+    pass
 
 if __name__ == "__main__":
     print("\nI'm converting from MacJournal to DayOne.\n")
@@ -126,8 +137,8 @@ if __name__ == "__main__":
     metaData['entryText'] = entryText(mjEntry, mjDoc, format=args.format)
 
     journalPath = "{}.dayone".format(args.journal_name)
-    if not os.path.exists(journalPath):
-        os.makedirs( os.path.join(journalPath, "entries") )
-        os.makedirs( os.path.join(journalPath, "photos") )
+    makeJournal(journalPath)
+
+
 
 
