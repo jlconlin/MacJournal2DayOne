@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import os
 import subprocess
+import textwrap
 import sys
 sys.path.append("parser")
 
@@ -57,7 +58,7 @@ def entryData(Entry, mjDoc):
     metaData['agentVersion'] = generator.getAttribute('version')
 
     # Date
-    fmt = "%Y-%m-%dT%H:%M:%S.%f"
+    fmt = "%Y-%m-%dT%H:%M:%S"
     metaData['date'] = "{}Z".format( Entry.date.strftime(fmt) )
 
     # Location data
@@ -113,7 +114,7 @@ def makeEntries(journalPath, mjDoc, Entries, format):
     for entry in Entries:
         metaData = entryData(entry, mjDoc)
         eText = entryText(entry, mjDoc, format=args.format)
-        metaData['entryText'] = eText
+        metaData['entryText'] = eText.replace('\t', '\n')
 
         filename = os.path.join( journalPath, "entries",
             '{}.doentry'.format(metaData['id']) )
