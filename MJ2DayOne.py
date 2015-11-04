@@ -7,8 +7,6 @@ import textwrap
 import sys
 sys.path.append("parser")
 
-import pypandoc
-
 import MJParser
 
 dayOneBasicString = """
@@ -16,33 +14,27 @@ dayOneBasicString = """
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>Creation Date</key>
-	<date>{date}</date>
-	<key>Creator</key>
-	<dict>
-		<key>Generation Date</key>
-		<date>{date}</date>
-		<key>Software Agent</key>
-		<string>MacJournal/{agentVersion}</string>
-	</dict>
-	<key>Entry Text</key>
-	<string>{entryText}</string>
-	<key>Location</key>
-	<dict>
-		<key>Latitude</key>
-		<real>{latitude}</real>
-		<key>Longitude</key>
-		<real>{longitude}</real>
-	</dict>
-	<key>Starred</key>
-	<false/>
-	<key>Tags</key>
-	<array>{tags}
+    <key>Creation Date</key>
+    <date>{date}</date>
+    <key>Creator</key>
+    <dict>
+        <key>Generation Date</key>
+        <date>{date}</date>
+        <key>Software Agent</key>
+        <string>MacJournal/{agentVersion}</string>
+    </dict>
+    <key>Entry Text</key>
+    <string>{entryText}
+    </string>{location}
+    <key>Starred</key>
+    <false/>
+    <key>Tags</key>
+    <array>{tags}
     </array>
-	<key>Time Zone</key>
-	<string>{timezone}</string>
-	<key>UUID</key>
-	<string>{id}</string>
+    <key>Time Zone</key>
+    <string>{timezone}</string>
+    <key>UUID</key>
+    <string>{id}</string>
 </dict>
 </plist>
 """
@@ -63,8 +55,19 @@ def entryData(Entry, mjDoc):
 
     # Location data
     metaData['timezone'] = Entry.timezone()
-    metaData['latitude'] = Entry.latitude()
-    metaData['longitude'] = Entry.latitude()
+    location = Entry.location()
+    if location:
+        metaData['location'] = """
+    <key>Location</key>
+    <dict>
+        <key>Latitude</key>
+        <real>{latitude}</real>
+        <key>Longitude</key>
+        <real>{longitude}</real>
+    </dict>\n""".format(latitude=location[0], longitude=location[1])
+    else:
+        metaData['location'] = ""
+
 
     # Tags
     keywords = Entry.keywords()
@@ -85,12 +88,23 @@ def entryText(Entry, mjDoc, format="txt"):
     """
     filename = os.path.join(mjDoc.Content, Entry.filename)
 
-    # Copy file to cwd. I don't know why Python can't otherwise find the file.
+    # Copy file to cwd.
+    # I don't know why Python can't otherwise find the file.
     os.system( 'cp -r "{}" .'.format(filename) )
 
     # Convert the file to preferred format
-    cmd = 'textutil -convert {} "{}" -stdout'.format(format, Entry.filename)
-    content = subprocess.check_output(cmd, shell=True)
+    if format == "txt":
+        cmd = 'textutil -convert {} "{}" -stdout'.format(format, Entry.filename)
+        content = subprocess.check_output(cmd, shell=True)
+
+        # Replace special characters
+        content = content.replace('&', '&amp;')
+        content = content.replace('<', '&lt;')
+        content = content.replace('<', '&gt;')
+
+    else:
+        raise NotImplementedError(
+            "I don't know how to convert to format: {}".format(format) )
 
     # Delete copied file
     os.system( 'rm -rf "{}"'.format(Entry.filename) )
@@ -125,6 +139,8 @@ def makeEntries(journalPath, mjDoc, Entries, format):
 
         with open(filename, 'w') as entryFile:
             entryFile.write(text)
+
+    print("{} entries".format(i))
 
 def extractEntries(journal):
     """
@@ -164,7 +180,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    mjDoc = MJParser.mjdoc(args.mjdoc[0], verbose=True)
+#   mjDoc = MJParser.mjdoc(args.mjdoc[0], verbose=True)
 
     if args.xml:
         mjDoc.MakeXMLFile(args.xml)
@@ -175,8 +191,7 @@ if __name__ == "__main__":
     Entries = extractEntries( mjDoc.Journals[args.journal] )
     makeEntries(journalPath, mjDoc, Entries, args.format)
 
-
-
-
-
-
+#   entry = Entries[2778]
+#   metaData = entryData(entry, mjDoc)
+#   metaData['entryText'] = entryText(entry, mjDoc, format="txt").replace('\t', '\n')
+#   makeEntries(journalPath, mjDoc, [entry], args.format)
