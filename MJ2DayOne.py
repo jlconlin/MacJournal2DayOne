@@ -86,14 +86,14 @@ def entryText(Entry, mjDoc, format="txt"):
     filename = os.path.join(mjDoc.Content, Entry.filename)
 
     # Copy file to cwd. I don't know why Python can't otherwise find the file.
-    os.system( 'cp "{}" .'.format(filename) )
+    os.system( 'cp -r "{}" .'.format(filename) )
 
     # Convert the file to preferred format
     cmd = 'textutil -convert {} "{}" -stdout'.format(format, Entry.filename)
     content = subprocess.check_output(cmd, shell=True)
 
     # Delete copied file
-    os.system( 'rm "{}"'.format(Entry.filename) )
+    os.system( 'rm -rf "{}"'.format(Entry.filename) )
 
     return content
 
@@ -111,7 +111,9 @@ def makeEntries(journalPath, mjDoc, Entries, format):
     makeEntries will create a journal entry for each entry in Entries.
     Entries.
     """
-    for entry in Entries:
+    print("\nMaking entries for:")
+    for i, entry in enumerate(Entries):
+        print( "\t{:4d}-{}".format(i, entry.name) )
         metaData = entryData(entry, mjDoc)
         eText = entryText(entry, mjDoc, format=args.format)
         metaData['entryText'] = eText.replace('\t', '\n')
@@ -123,6 +125,24 @@ def makeEntries(journalPath, mjDoc, Entries, format):
 
         with open(filename, 'w') as entryFile:
             entryFile.write(text)
+
+def extractEntries(journal):
+    """
+    extractEntries will collect all the entries in a journal and return them in
+    a list. This will call recursively to all the nested journals.
+    """
+    print("Extracting entries from journal: {}".format(journal) )
+    entries = []
+
+    # Add entries from current journal
+    entries.extend(journal.Entries)
+
+    # Add entries from all sub journals
+    for subJournal in journal.Journals.values():
+        entries.extend( extractEntries(subJournal) )
+
+    return entries
+
 
 if __name__ == "__main__":
     print("\nI'm converting from MacJournal to DayOne.\n")
@@ -137,24 +157,25 @@ if __name__ == "__main__":
     parser.add_argument('--format', type=str, default="txt",
         help='Format to which the entry text will be converted')
 
+    parser.add_argument('--journal', type=str, default="Daily Journal",
+        help='Name of MacJournal journal from which entries will be converted.')
     parser.add_argument('--journal-name', type=str, default="Journal",
         help="Name of DayOne journal file; '.dayone' will be appended.")
 
     args = parser.parse_args()
 
-#   mjDoc = MJParser.mjdoc(args.mjdoc[0], verbose=True)
+    mjDoc = MJParser.mjdoc(args.mjdoc[0], verbose=True)
 
     if args.xml:
         mjDoc.MakeXMLFile(args.xml)
 
-    mjEntry = mjDoc.Journals['Daily Journal'].Journals['2015'].Entries[0]
-    metaData = entryData(mjEntry, mjDoc)
-    metaData['entryText'] = entryText(mjEntry, mjDoc, format=args.format)
-
     journalPath = "{}.dayone".format(args.journal_name)
     makeJournal(journalPath)
 
-    makeEntries(journalPath, mjDoc, [mjEntry], args.format)
+    Entries = extractEntries( mjDoc.Journals[args.journal] )
+    makeEntries(journalPath, mjDoc, Entries, args.format)
+
+
 
 
 
